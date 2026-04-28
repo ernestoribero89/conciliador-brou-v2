@@ -1,5 +1,521 @@
-flask
-pandas
-openpyxl
-xlrd
-gunicorn
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BROU | Conciliador Bancario</title>
+  <style>
+    :root{
+      --brou-blue:#0050A8;
+      --brou-blue-dark:#003F8E;
+      --brou-blue-soft:#0B63C7;
+      --brou-yellow:#F4C900;
+      --white:#ffffff;
+      --ice:#EAF5FF;
+      --text:#063F7E;
+      --muted:#5C78A0;
+      --border:rgba(255,255,255,.35);
+      --shadow:0 22px 65px rgba(0, 25, 80, .28);
+      --radius:24px;
+    }
+
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--white);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(255,255,255,.13), transparent 34%),
+        radial-gradient(circle at 85% 25%, rgba(0,110,230,.35), transparent 35%),
+        linear-gradient(180deg, var(--brou-blue) 0%, var(--brou-blue-dark) 100%);
+    }
+
+    .wrap{
+      max-width:1180px;
+      margin:0 auto;
+      padding:46px 24px 40px;
+    }
+
+    .hero{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:28px;
+      padding:10px 0 38px;
+      border-bottom:1px solid rgba(255,255,255,.22);
+    }
+
+    .logo-card{
+      width:142px;
+      height:142px;
+      border-radius:12px;
+      overflow:hidden;
+      border:5px solid var(--brou-yellow);
+      box-shadow:0 16px 40px rgba(0,0,0,.22);
+      background:var(--brou-blue);
+      flex:0 0 auto;
+    }
+
+    .logo-card img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:clamp(54px, 8vw, 96px);
+      line-height:.9;
+      letter-spacing:-.05em;
+      font-weight:900;
+      text-shadow:0 8px 22px rgba(0,0,0,.18);
+    }
+
+    .brand p{
+      margin:10px 0 0;
+      font-size:clamp(24px, 3vw, 42px);
+      line-height:1;
+      font-weight:800;
+      color:#F8FBFF;
+    }
+
+    .intro{
+      text-align:center;
+      margin:46px auto 30px;
+    }
+
+    .intro h2{
+      margin:0 0 12px;
+      font-size:clamp(26px,3vw,36px);
+      letter-spacing:-.02em;
+    }
+
+    .intro p{
+      margin:0;
+      font-size:18px;
+      color:#DDEEFF;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:22px;
+      margin:34px 0 38px;
+    }
+
+    .card{
+      background:linear-gradient(180deg,#fff,#f7fbff);
+      color:var(--text);
+      border-radius:var(--radius);
+      padding:30px 22px 26px;
+      text-align:center;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.55);
+      transition:transform .18s ease, box-shadow .18s ease;
+    }
+
+    .card:hover{
+      transform:translateY(-5px);
+      box-shadow:0 30px 75px rgba(0, 25, 80, .36);
+    }
+
+    .icon{
+      width:86px;
+      height:86px;
+      margin:0 auto 22px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:46px;
+      font-weight:900;
+    }
+
+    .usd .icon{background:#EAF7EC;color:#35A853}
+    .uyu .icon{background:#EAF4FF;color:#0B72DB}
+    .eur .icon{background:#FFF5D8;color:#E7B600}
+    .all .icon{background:#F1E9FF;color:#7D3DE2}
+
+    .card h3{
+      margin:0 0 14px;
+      font-size:24px;
+      letter-spacing:-.02em;
+    }
+
+    .card p{
+      margin:0 0 24px;
+      color:#52627A;
+      line-height:1.5;
+      min-height:48px;
+    }
+
+    button{
+      border:0;
+      border-radius:12px;
+      padding:14px 18px;
+      font-size:15px;
+      font-weight:900;
+      cursor:pointer;
+      color:#fff;
+      background:linear-gradient(180deg,var(--brou-blue-soft),var(--brou-blue-dark));
+      box-shadow:0 12px 25px rgba(0,65,150,.26);
+      transition:transform .16s ease, filter .16s ease;
+      width:100%;
+    }
+
+    button:hover{
+      transform:translateY(-2px);
+      filter:brightness(1.07);
+    }
+
+    button:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .upload{
+      margin-top:6px;
+      border:2px dashed rgba(255,255,255,.42);
+      border-radius:var(--radius);
+      padding:34px;
+      background:rgba(0,60,135,.28);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .upload-title{
+      text-align:center;
+      margin-bottom:24px;
+    }
+
+    .upload-cloud{
+      width:78px;
+      height:78px;
+      border-radius:50%;
+      background:rgba(255,255,255,.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin:0 auto 14px;
+      font-size:34px;
+    }
+
+    .upload-title h3{
+      margin:0 0 8px;
+      font-size:28px;
+    }
+
+    .upload-title p{
+      margin:0;
+      color:#DDEEFF;
+    }
+
+    .file-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
+      margin-top:26px;
+    }
+
+    .file-box{
+      background:rgba(255,255,255,.96);
+      color:var(--text);
+      border-radius:18px;
+      padding:18px;
+    }
+
+    .file-box h4{
+      margin:0 0 12px;
+      font-size:20px;
+    }
+
+    label{
+      display:block;
+      margin:12px 0 7px;
+      color:#355A86;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    input[type=file]{
+      width:100%;
+      color:#355A86;
+      background:#F2F8FF;
+      border:1px dashed #9CC7F1;
+      border-radius:11px;
+      padding:10px;
+    }
+
+    .info{
+      margin-top:24px;
+      background:linear-gradient(180deg,#F3FAFF,#E3F3FF);
+      border:1px solid rgba(255,255,255,.55);
+      color:var(--text);
+      border-radius:18px;
+      padding:22px 26px;
+      display:flex;
+      gap:16px;
+      align-items:flex-start;
+      box-shadow:0 14px 35px rgba(0,25,80,.14);
+    }
+
+    .info .i{
+      font-size:28px;
+      color:var(--brou-blue);
+      line-height:1;
+    }
+
+    .info h4{
+      margin:0 0 7px;
+      font-size:20px;
+    }
+
+    .info p{
+      margin:0;
+      color:#315B8B;
+      line-height:1.55;
+    }
+
+    .status{
+      margin-top:18px;
+      min-height:24px;
+      text-align:center;
+      color:#F8FBFF;
+      font-weight:700;
+      white-space:pre-wrap;
+    }
+
+    footer{
+      border-top:1px solid rgba(255,255,255,.22);
+      margin-top:48px;
+      padding-top:26px;
+      display:flex;
+      justify-content:space-between;
+      gap:22px;
+      align-items:center;
+      color:#DDEEFF;
+    }
+
+    .footer-brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .mini-logo{
+      width:56px;
+      height:56px;
+      border:3px solid var(--brou-yellow);
+      overflow:hidden;
+      border-radius:6px;
+      background:var(--brou-blue);
+    }
+
+    .mini-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .footer-brand strong{
+      display:block;
+      color:#fff;
+    }
+
+    .footer-brand span{
+      display:block;
+      color:#DDEEFF;
+      margin-top:3px;
+      font-size:14px;
+    }
+
+    @media(max-width:1050px){
+      .grid{grid-template-columns:repeat(2,1fr)}
+      .file-grid{grid-template-columns:1fr}
+    }
+
+    @media(max-width:720px){
+      .hero{flex-direction:column;text-align:center}
+      .logo-card{width:118px;height:118px}
+      .grid{grid-template-columns:1fr}
+      footer{flex-direction:column;text-align:center}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="logo-card">
+        <img src="/static/brou-logo.png" alt="Logo BROU">
+      </div>
+      <div class="brand">
+        <h1>BROU</h1>
+        <p>Conciliador Bancario</p>
+      </div>
+    </header>
+
+    <section class="intro">
+      <h2>Seleccioná la conciliación que deseas ejecutar</h2>
+      <p>Podés conciliar una moneda específica o ejecutar todas las conciliaciones juntas.</p>
+    </section>
+
+    <main>
+      <section class="grid">
+        <article class="card usd">
+          <div class="icon">$</div>
+          <h3>Conciliar USD</h3>
+          <p>Ejecutar conciliación para moneda USD.</p>
+          <button type="button" onclick="conciliarSolo('usd')">› Conciliar USD</button>
+        </article>
+
+        <article class="card uyu">
+          <div class="icon">$</div>
+          <h3>Conciliar UYU</h3>
+          <p>Ejecutar conciliación para moneda UYU.</p>
+          <button type="button" onclick="conciliarSolo('uyu')">› Conciliar UYU</button>
+        </article>
+
+        <article class="card eur">
+          <div class="icon">€</div>
+          <h3>Conciliar EUR</h3>
+          <p>Ejecutar conciliación para moneda EUR.</p>
+          <button type="button" onclick="conciliarSolo('eur')">› Conciliar EUR</button>
+        </article>
+
+        <article class="card all">
+          <div class="icon">▰</div>
+          <h3>Conciliar todo</h3>
+          <p>Ejecutar conciliación para todas las monedas.</p>
+          <button type="button" onclick="conciliarTodo()">› Conciliar todo</button>
+        </article>
+      </section>
+
+      <form id="form" class="upload">
+        <div class="upload-title">
+          <div class="upload-cloud">☁</div>
+          <h3>Subí los archivos necesarios</h3>
+          <p>Seleccioná los archivos SAP y Banco para la moneda que quieras procesar.</p>
+        </div>
+
+        <div class="file-grid">
+          <section class="file-box">
+            <h4>USD</h4>
+            <label>SAP USD</label>
+            <input name="sap_usd" type="file" accept=".xlsx,.xls">
+            <label>Banco USD</label>
+            <input name="banco_usd" type="file" accept=".xlsx,.xls">
+          </section>
+
+          <section class="file-box">
+            <h4>UYU</h4>
+            <label>SAP UYU</label>
+            <input name="sap_uyu" type="file" accept=".xlsx,.xls">
+            <label>Banco UYU</label>
+            <input name="banco_uyu" type="file" accept=".xlsx,.xls">
+          </section>
+
+          <section class="file-box">
+            <h4>EUR</h4>
+            <label>SAP EUR</label>
+            <input name="sap_eur" type="file" accept=".xlsx,.xls">
+            <label>Banco EUR</label>
+            <input name="banco_eur" type="file" accept=".xlsx,.xls">
+          </section>
+        </div>
+
+        <div class="status" id="status"></div>
+      </form>
+
+      <section class="info">
+        <div class="i">ⓘ</div>
+        <div>
+          <h4>Archivos requeridos</h4>
+          <p>Para cada moneda seleccionada necesitás subir un archivo SAP y un archivo Banco. El resultado se descarga como ZIP con los Excel conciliados y el resumen de ejecución.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-brand">
+        <div class="mini-logo">
+          <img src="/static/brou-logo.png" alt="Logo BROU">
+        </div>
+        <div>
+          <strong>Banco de la República Oriental del Uruguay</strong>
+          <span>Conciliador Bancario</span>
+        </div>
+      </div>
+      <div>© 2026 BROU - Uso interno</div>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const statusEl = document.getElementById("status");
+    const buttons = document.querySelectorAll("button");
+
+    function setButtons(disabled) {
+      buttons.forEach(b => b.disabled = disabled);
+    }
+
+    function appendIfExists(fd, name) {
+      const input = form.querySelector(`[name="${name}"]`);
+      if (input && input.files.length > 0) {
+        fd.append(name, input.files[0]);
+      }
+    }
+
+    async function enviar(fd, etiqueta) {
+      setButtons(true);
+      statusEl.textContent = `Procesando ${etiqueta}...`;
+
+      try {
+        const res = await fetch("/conciliar", { method: "POST", body: fd });
+
+        if (!res.ok) {
+          let msg = "Error procesando la conciliación.";
+          try {
+            const data = await res.json();
+            msg = data.error || msg;
+          } catch {}
+          throw new Error(msg);
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `CONCILIACIONES_BROU_${etiqueta.toUpperCase()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        statusEl.textContent = `Listo. ZIP descargado para ${etiqueta}.`;
+      } catch (err) {
+        statusEl.textContent = err.message;
+      } finally {
+        setButtons(false);
+      }
+    }
+
+    function conciliarSolo(moneda) {
+      const fd = new FormData();
+      appendIfExists(fd, `sap_${moneda}`);
+      appendIfExists(fd, `banco_${moneda}`);
+      enviar(fd, moneda);
+    }
+
+    function conciliarTodo() {
+      const fd = new FormData();
+      ["usd", "uyu", "eur"].forEach(m => {
+        appendIfExists(fd, `sap_${m}`);
+        appendIfExists(fd, `banco_${m}`);
+      });
+      enviar(fd, "todo");
+    }
+  </script>
+</body>
+</html>
