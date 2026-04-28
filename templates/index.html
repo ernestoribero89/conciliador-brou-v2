@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Conciliador BROU Separado</title>
+  <style>
+    :root{
+      --bg:#0f172a; --text:#f8fafc; --muted:#94a3b8; --border:rgba(255,255,255,.12);
+      --green:#22c55e; --blue:#38bdf8; --yellow:#facc15; --pink:#fb7185;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      background:radial-gradient(circle at top left,rgba(56,189,248,.18),transparent 35%),
+                 radial-gradient(circle at bottom right,rgba(34,197,94,.16),transparent 35%),
+                 var(--bg);
+    }
+    .wrap{max-width:1160px;margin:0 auto;padding:42px 22px 70px}
+    h1{font-size:clamp(34px,5vw,58px);line-height:1;margin:0;letter-spacing:-.04em}
+    .sub{color:var(--muted);font-size:18px;max-width:850px;line-height:1.5;margin:16px 0 28px}
+    .panel{
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));
+      border:1px solid var(--border);border-radius:24px;padding:24px;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+    }
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .coin{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:18px;padding:18px;position:relative;overflow:hidden}
+    .coin:before{content:"";position:absolute;left:0;top:0;right:0;height:4px;background:var(--accent)}
+    .coin h2{margin:8px 0 12px;font-size:30px}
+    .usd{--accent:var(--blue)} .uyu{--accent:var(--green)} .eur{--accent:var(--yellow)}
+    .usd h2{color:var(--blue)} .uyu h2{color:var(--green)} .eur h2{color:var(--yellow)}
+    label{display:block;color:#cbd5e1;font-size:13px;margin:14px 0 7px}
+    input[type=file]{width:100%;padding:12px;border:1px dashed rgba(255,255,255,.25);border-radius:13px;background:#0b1220;color:var(--muted)}
+    .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px}
+    button{
+      border:0;border-radius:16px;padding:15px 16px;font-size:15px;font-weight:900;cursor:pointer;color:#04111f;
+      box-shadow:0 16px 36px rgba(0,0,0,.35)
+    }
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .b-all{background:linear-gradient(90deg,var(--blue),var(--green),var(--yellow))}
+    .b-usd{background:var(--blue)}
+    .b-uyu{background:var(--green)}
+    .b-eur{background:var(--yellow)}
+    .status{margin-top:16px;color:var(--muted);min-height:24px;white-space:pre-wrap}
+    .hint{margin-top:22px;color:#cbd5e1;background:rgba(255,255,255,.045);border:1px solid var(--border);border-radius:16px;padding:16px;line-height:1.5}
+    @media(max-width:900px){.grid,.actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Conciliador BROU</h1>
+    <p class="sub">Un solo sistema para conciliar USD, UYU y EUR. Podés correr una moneda sola o las tres juntas.</p>
+
+    <form class="panel" id="form">
+      <div class="grid">
+        <section class="coin usd">
+          <h2>USD</h2>
+          <label>SAP USD</label>
+          <input name="sap_usd" type="file" accept=".xlsx,.xls">
+          <label>Banco USD</label>
+          <input name="banco_usd" type="file" accept=".xlsx,.xls">
+        </section>
+
+        <section class="coin uyu">
+          <h2>UYU</h2>
+          <label>SAP UYU</label>
+          <input name="sap_uyu" type="file" accept=".xlsx,.xls">
+          <label>Banco UYU</label>
+          <input name="banco_uyu" type="file" accept=".xlsx,.xls">
+        </section>
+
+        <section class="coin eur">
+          <h2>EUR</h2>
+          <label>SAP EUR</label>
+          <input name="sap_eur" type="file" accept=".xlsx,.xls">
+          <label>Banco EUR</label>
+          <input name="banco_eur" type="file" accept=".xlsx,.xls">
+        </section>
+      </div>
+
+      <div class="actions">
+        <button class="b-usd" type="button" onclick="conciliarSolo('usd')">Conciliar USD</button>
+        <button class="b-uyu" type="button" onclick="conciliarSolo('uyu')">Conciliar UYU</button>
+        <button class="b-eur" type="button" onclick="conciliarSolo('eur')">Conciliar EUR</button>
+        <button class="b-all" type="button" onclick="conciliarTodo()">Conciliar todo</button>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="hint">
+        Cada corrida descarga un <strong>CONCILIACIONES_BROU.zip</strong> con los Excel generados y el resumen.
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const statusEl = document.getElementById("status");
+    const buttons = document.querySelectorAll("button");
+
+    function setButtons(disabled) {
+      buttons.forEach(b => b.disabled = disabled);
+    }
+
+    function appendIfExists(fd, name) {
+      const input = form.querySelector(`[name="${name}"]`);
+      if (input && input.files.length > 0) {
+        fd.append(name, input.files[0]);
+      }
+    }
+
+    async function enviar(fd, etiqueta) {
+      setButtons(true);
+      statusEl.textContent = `Procesando ${etiqueta}...`;
+
+      try {
+        const res = await fetch("/conciliar", { method: "POST", body: fd });
+
+        if (!res.ok) {
+          let msg = "Error procesando la conciliación.";
+          try {
+            const data = await res.json();
+            msg = data.error || msg;
+          } catch {}
+          throw new Error(msg);
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `CONCILIACIONES_BROU_${etiqueta.toUpperCase()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        statusEl.textContent = `Listo. ZIP descargado para ${etiqueta}.`;
+      } catch (err) {
+        statusEl.textContent = err.message;
+      } finally {
+        setButtons(false);
+      }
+    }
+
+    function conciliarSolo(moneda) {
+      const fd = new FormData();
+      appendIfExists(fd, `sap_${moneda}`);
+      appendIfExists(fd, `banco_${moneda}`);
+      enviar(fd, moneda);
+    }
+
+    function conciliarTodo() {
+      const fd = new FormData();
+      ["usd", "uyu", "eur"].forEach(m => {
+        appendIfExists(fd, `sap_${m}`);
+        appendIfExists(fd, `banco_${m}`);
+      });
+      enviar(fd, "todo");
+    }
+  </script>
+</body>
+</html>
